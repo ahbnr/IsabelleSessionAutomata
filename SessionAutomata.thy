@@ -1,24 +1,10 @@
 theory SessionAutomata
-  imports Main HOL.String
+  imports Main HOL.String LocalTypes
 begin
 
 (* The session automata forget about the caller. Is this still valid?
    (Probably because of type checking
 *)
-
-datatype Method = m1 | m2 | m3
-datatype Future = f | f' | f''
-
-datatype LocalType =
-      InvocationRecv Future Method ("\<questiondown>_ _" [1000, 61] 61)
-    | Reaction Future ("React(_)" 70)
-    | Concat LocalType LocalType ("_;; _" [60, 61] 60)
-    | Repeat LocalType ("_ *" 70)
-    | Branching "LocalType list" ("\<Oplus> _" 70)
-
-definition
-  exampleType :: LocalType where
-  "exampleType \<equiv> \<questiondown>f m1 ;; \<questiondown>f'' m3 ;; React(f)"
 
 datatype State = q nat ("q`_")
 datatype Register = Register nat ("r`_")
@@ -121,78 +107,6 @@ fun genAutomaton :: "LocalType \<Rightarrow> Cache \<Rightarrow> (SessionAutomat
         (concatAutomata (Q, q0, \<Phi>', F) [q0] remainderAutomaton, c'')
     )"
 
-(* GraphViz generator *)
-
-value "append ''lol'' ''nom''"
-
-(* https://stackoverflow.com/a/23865253 *)
-fun string_of_nat :: "nat \<Rightarrow> string"
-where
-  "string_of_nat n = (if n < 10 then [char_of (48 + n)] else 
-     string_of_nat (n div 10) @ [char_of (48 + (n mod 10))])"
-
-primrec stringifyState :: "State \<Rightarrow> string" where
-  "stringifyState (q`n) = ''q'' @ (string_of_nat n)"
-
-primrec stringifyRegister :: "Register \<Rightarrow> string" where
-  "stringifyRegister (r`n) = ''r'' @ (string_of_nat n)"
-
-fun stringifyStates :: "State list \<Rightarrow> string" where
-    "stringifyStates (state#qs) =
-         (stringifyState state) 
-       @ '' ''
-       @ (stringifyStates qs)
-    "
-  | "stringifyStates [] = '' ''"
-
-primrec stringifyMethod :: "Method \<Rightarrow> string" where
-    "stringifyMethod m1 = ''m1''"
-  | "stringifyMethod m2 = ''m2''"
-  | "stringifyMethod m3 = ''m3''"
-
-primrec stringifyFuture :: "Future \<Rightarrow> string" where
-    "stringifyFuture f = ''f''"
-  | "stringifyFuture f' = ''f`''"
-  | "stringifyFuture f'' = ''f``''"
-
-primrec stringifyLabel :: "TransitionVerb \<Rightarrow> string" where
-    "stringifyLabel (invocREv fut method register) =
-        ''\"invocREv ''
-      @ (stringifyFuture fut)
-      @ '' ''
-      @ (stringifyMethod method)
-      @ '' ''
-      @ (stringifyRegister register)
-      @ ''\"''
-    "
-  | "stringifyLabel (reactEv fut register) =
-        ''\"reactEv ''
-      @ (stringifyFuture fut)
-      @ '' ''
-      @ (stringifyRegister register)
-      @ ''\"''
-    "
-  | "stringifyLabel (\<epsilon>) =''empty''"
-
-fun stringifyTransitions :: "Transition list \<Rightarrow> string" where
-    "stringifyTransitions ((q1, label, q2)#ts) =
-        (stringifyState q1)
-      @ '' -> ''
-      @ (stringifyState q2)
-      @ '' [label = ''
-      @ (stringifyLabel label)
-      @ '' ];\<newline>''
-      @ (stringifyTransitions ts)
-    "
-  | "stringifyTransitions [] = ''''"
-
-fun genGraphViz :: "SessionAutomaton \<Rightarrow> string" where
-  "genGraphViz (Q, q0, \<Phi>', F) =
-      ''digraph finite_state_machine {\<newline>node [shape = doublecircle]; ''
-    @ (stringifyStates F)
-    @ ''\<newline>node [shape = circle];\<newline>''
-    @ (stringifyTransitions \<Phi>')
-    @ ''}''"
 
 definition
   testAutomaton1 :: SessionAutomaton where
@@ -201,8 +115,5 @@ definition
 definition
   testAutomaton2 :: SessionAutomaton where
   "testAutomaton2 \<equiv> fst (genAutomaton (\<Oplus>[((\<questiondown> f m1 ;; \<questiondown>f'' m3 ;; React(f))*), (\<questiondown> f' m2)]) initialCache)"
-
-value "genGraphViz testAutomaton1"
-value "genGraphViz testAutomaton2"
 
 end
